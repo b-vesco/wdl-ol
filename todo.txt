@@ -1,43 +1,44 @@
 iplug-todo
 
+ALL - make side chain/multi-channel definitions more consistent and more flexible, i.e. mono or stereo SC
 ALL - lock free-ness
 ALL - GetHostVersionStr() etc are not reliable, especially with AU
 ALL - more flexible resource importing (not just png resources)
 ALL - improve text entry dimensions / text size
 ALL - freetype based font renderer, import .ttf files
-ALL - test keyboard input
 ALL - drag & drop area
 ALL - OS tooltips?
 ALL - make consistent code style. tabs/spaces m_blah mBlah etc
-ALL - make side chain/multi-channel definitions consistent/easier
-ALL - save fxp/fxb with chunks
 ALL - carbon non-composited text entry
+ALL - carbon non-composited doesn't just draw the dirty area of the GUI, it always redraws the entire GUI
+ALL - set up MSVC projects to handle compilation on x64 or x86 WRT VST3 binary copying, debugging executable etc
 
 Examples:
 
+- Fix MSVC project build order and paths of IPlug.lib, Lice.lib etc for tracer builds
 - IPlugPolySynth
 - IPlugDrumSynth
 - IPlugMultiChannel
 - IPlugOpenGL on win, fix on mac
-- IPlugChunks still needs some work
 - IPlugControls - some controls not finished
 
 AU wrapper:
 
-- multiple output busess, i.e. for a drumsynth
-- sidechain input - seems to kind of work in logic, works in live, not in studio one
 - preset changing from inside the plugin doesn't consistently update logic's GUI
 - auval "preset name not retained" message
+- SendMidiMsg
+- possibility of instruments with multichannel output, e.g. 5.1
+- possibility of instruments with side-chain inputs
 
 VST3 wrapper:
 
 - midi output
 - pitch bend & other common MIDI CC parameters
 - check presets list (doesn't work in S1)
-- 
 
 RTAS wrapper:
 
+- auxiliary output stems for instruments with multiple outs
 - chunks
 - keycatcher doesn't work (OSX)
 - text entries disabled (OSX)

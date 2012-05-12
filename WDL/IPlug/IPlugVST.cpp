@@ -190,21 +190,27 @@ void IPlugVST::GetTime(ITimeInfo* pTimeInfo)
 EHost IPlugVST::GetHost() 
 {
   EHost host = IPlugBase::GetHost();
-  if (host == kHostUninit) {
-    char vendorStr[256], productStr[256];
+  
+  if (host == kHostUninit) 
+  {
+    char productStr[256];
     productStr[0] = '\0';
     int version = 0;
     mHostCallback(&mAEffect, audioMasterGetProductString, 0, 0, productStr, 0.0f);
-    if (CSTR_NOT_EMPTY(vendorStr) || CSTR_NOT_EMPTY(productStr)) {
+    
+    if (CSTR_NOT_EMPTY(productStr)) 
+    {
       int decVer = mHostCallback(&mAEffect, audioMasterGetVendorVersion, 0, 0, 0, 0.0f);
       int ver = decVer / 10000;
       int rmaj = (decVer - 10000 * ver) / 100;
       int rmin = (decVer - 10000 * ver - 100 * rmaj);
       version = (ver << 16) + (rmaj << 8) + rmin;
     }
+    
     SetHost(productStr, version);
     host = IPlugBase::GetHost();    
   }
+  
   return host;
 }
 
@@ -309,27 +315,6 @@ void IPlugVST::HostSpecificInit()
     
     OnHostIdentified();
   }
-}
-
-#define IPLUG_VERSION_MAGIC 'pfft'
-
-void InitializeVSTChunk(ByteChunk* pChunk)
-{
-  pChunk->Clear();
-  int magic = IPLUG_VERSION_MAGIC;
-  pChunk->Put(&magic);
-  int ver = IPLUG_VERSION;
-  pChunk->Put(&ver);
-}
-
-int GetIPlugVerFromChunk(ByteChunk* pChunk, int* pPos)
-{
-  int magic = 0, ver = 0;
-  int pos = pChunk->Get(&magic, *pPos);
-  if (pos > *pPos && magic == IPLUG_VERSION_MAGIC) {
-    *pPos = pChunk->Get(&ver, pos);
-  }
-  return ver;
 }
 
 VstIntPtr VSTCALLBACK IPlugVST::VSTDispatcher(AEffect *pEffect, VstInt32 opCode, VstInt32 idx, VstIntPtr value, void *ptr, float opt)
@@ -481,12 +466,11 @@ VstIntPtr VSTCALLBACK IPlugVST::VSTDispatcher(AEffect *pEffect, VstInt32 opCode,
       if (ppData) {
         bool isBank = (!idx);
         ByteChunk* pChunk = (isBank ? &(_this->mBankState) : &(_this->mState));
-        InitializeVSTChunk(pChunk);
+        _this->InitializeVSTChunk(pChunk);
         bool savedOK = true;
         if (isBank) {
-          _this->ModifyCurrentPreset();
+          //_this->ModifyCurrentPreset();
           savedOK = _this->SerializePresets(pChunk);
-          //savedOK = _this->SerializeState(pChunk);
         }
         else {
           savedOK = _this->SerializeState(pChunk);
@@ -505,11 +489,10 @@ VstIntPtr VSTCALLBACK IPlugVST::VSTDispatcher(AEffect *pEffect, VstInt32 opCode,
         pChunk->Resize(value);
         memcpy(pChunk->GetBytes(), ptr, value);
         int pos = 0;
-        int iplugVer = GetIPlugVerFromChunk(pChunk, &pos);
+        int iplugVer = _this->GetIPlugVerFromChunk(pChunk, &pos);
         isBank &= (iplugVer >= 0x010000);
         if (isBank) {
           pos = _this->UnserializePresets(pChunk, pos);
-          //pos = _this->UnserializeState(pChunk, pos);
         }
         else {
           pos = _this->UnserializeState(pChunk, pos);
@@ -557,9 +540,9 @@ VstIntPtr VSTCALLBACK IPlugVST::VSTDispatcher(AEffect *pEffect, VstInt32 opCode,
           pp->flags |= kVstPinIsStereo;
         }
         
-        if (_this->mInChannels.Get(idx)->mLabel.GetLength()) 
+        if (_this->GetInputLabel(idx)->GetLength()) 
         {
-          sprintf(pp->label, "%s", _this->mInChannels.Get(idx)->mLabel.Get());
+          sprintf(pp->label, "%s", _this->GetInputLabel(idx)->Get());
         }
         else 
         {
@@ -579,9 +562,9 @@ VstIntPtr VSTCALLBACK IPlugVST::VSTDispatcher(AEffect *pEffect, VstInt32 opCode,
 			  	pp->flags |= kVstPinIsStereo;
 			  }
         
-        if (_this->mOutChannels.Get(idx)->mLabel.GetLength()) 
+        if (_this->GetOutputLabel(idx)->GetLength()) 
         {
-          sprintf(pp->label, "%s", _this->mOutChannels.Get(idx)->mLabel.Get());
+          sprintf(pp->label, "%s", _this->GetOutputLabel(idx)->Get());
         }
         else 
         {
@@ -699,7 +682,7 @@ VstIntPtr VSTCALLBACK IPlugVST::VSTDispatcher(AEffect *pEffect, VstInt32 opCode,
       return _this->GetCurrentPresetIdx();
     }
     case effSetProgram: {
-      if (!(_this->DoesStateChunks())) {
+      if (_this->DoesStateChunks() == false) {
         _this->ModifyCurrentPreset(); // TODO: test, something is funny about this http://forum.cockos.com/showpost.php?p=485113&postcount=22
       }
       _this->RestorePreset((int) value);

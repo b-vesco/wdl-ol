@@ -2,6 +2,7 @@
 #define _IPLUGBASE_
 
 #define IPLUG_VERSION 0x010000
+#define IPLUG_VERSION_MAGIC 'pfft'
 
 #include "Containers.h"
 #include "IPlugStructs.h"
@@ -25,7 +26,7 @@ class IPlugBase
 public:
       
   // Use IPLUG_CTOR instead of calling directly (defined in IPlug_include_in_plug_src.h).
-	IPlugBase(int nParams,
+  IPlugBase(int nParams,
             const char* channelIOStr,
             int nPresets,
             const char* effectName,
@@ -47,38 +48,36 @@ public:
   virtual ~IPlugBase();
 
   // Implementations should set a mutex lock like in the no-op!
-	virtual void Reset() { TRACE; IMutexLock lock(this); }
-	virtual void OnParamChange(int paramIdx) { IMutexLock lock(this); }
-	
-	// Default passthrough.  Inputs and outputs are [nChannel][nSample].
+  virtual void Reset() { TRACE; IMutexLock lock(this); }
+  virtual void OnParamChange(int paramIdx) { IMutexLock lock(this); }
+  
+  // Default passthrough.  Inputs and outputs are [nChannel][nSample].
   // Mutex is already locked.
-	virtual void ProcessDoubleReplacing(double** inputs, double** outputs, int nFrames);
-	virtual void ProcessSingleReplacing(float** inputs, float** outputs, int nFrames);
+  virtual void ProcessDoubleReplacing(double** inputs, double** outputs, int nFrames);
+  virtual void ProcessSingleReplacing(float** inputs, float** outputs, int nFrames);
 
-	// In case the audio processing thread needs to do anything when the GUI opens
-	// (like for example, set some state dependent initial values for controls).
-	virtual void OnGUIOpen() { TRACE; }
-	virtual void OnGUIClose() { TRACE; }
+  // In case the audio processing thread needs to do anything when the GUI opens
+  // (like for example, set some state dependent initial values for controls).
+  virtual void OnGUIOpen() { TRACE; }
+  virtual void OnGUIClose() { TRACE; }
 
-	// This is an idle call from the audio processing thread, as opposed to 
-	// IGraphics::OnGUIIdle which is called from the GUI thread.
+  // This is an idle call from the audio processing thread, as opposed to 
+  // IGraphics::OnGUIIdle which is called from the GUI thread.
   // Only active if USE_IDLE_CALLS is defined.
-	virtual void OnIdle() {}
+  virtual void OnIdle() {}
 
   // Not usually needed ... Reset is called on activate regardless of whether this is implemented.
   // Also different hosts have different interpretations of "activate".
   // Implementations should set a mutex lock like in the no-op!  
   virtual void OnActivate(bool active) { TRACE;  IMutexLock lock(this); }
     
-	virtual void ProcessMidiMsg(IMidiMsg* pMsg);
-	virtual bool MidiNoteName(int noteNumber, char* rName) { *rName = '\0'; return false; }
+  virtual void ProcessMidiMsg(IMidiMsg* pMsg);
+  virtual bool MidiNoteName(int noteNumber, char* rName) { *rName = '\0'; return false; }
 
-  // Implementations should set a mutex lock.
-//	virtual bool SerializeState(ByteChunk* pChunk) { TRACE; return SerializeParams(pChunk); }
-	virtual bool SerializeState(ByteChunk* pChunk);
-  // Return the new chunk position (endPos).
-//	virtual int UnserializeState(ByteChunk* pChunk, int startPos) { TRACE; return UnserializeParams(pChunk, startPos); }
-	virtual int UnserializeState(ByteChunk* pChunk, int startPos);
+  // Implementations should set a mutex lock and call SerializeParams() after custom data is serialized
+  virtual bool SerializeState(ByteChunk* pChunk) { TRACE; return SerializeParams(pChunk); }
+  // Return the new chunk position (endPos). Implementations should set a mutex lock and call UnserializeParams() after custom data is unserialized
+  virtual int UnserializeState(ByteChunk* pChunk, int startPos) { TRACE; return UnserializeParams(pChunk, startPos); }
   
 #ifndef OS_IOS
   virtual void OnWindowResize() {}
@@ -89,12 +88,15 @@ public:
   // implement this to do something specific when IPlug is aware of the host
   // may get called multiple times
   virtual void OnHostIdentified() { return; };
+  
+  virtual void PopupHostContextMenuForParam(int param, int x, int y) { return; }; //only for VST3, call it from the GUI
+  
   // ----------------------------------------
   // Your plugin class, or a control class, can call these functions.
 
   int NParams() { return mParams.GetSize(); }
-	IParam* GetParam(int idx) { return mParams.Get(idx); }
-	IGraphics* GetGUI() { return mGraphics; }
+  IParam* GetParam(int idx) { return mParams.Get(idx); }
+  IGraphics* GetGUI() { return mGraphics; }
   
   const char* GetEffectName() { return mEffectName; }
   int GetEffectVersion(bool decimal);   // Decimal = VVVVRRMM, otherwise 0xVVVVRRMM.
@@ -105,20 +107,20 @@ public:
   int GetUniqueID() { return mUniqueID; }
   int GetMfrID() { return mMfrID; }
 
-	void SetParameterFromGUI(int idx, double normalizedValue);
+  void SetParameterFromGUI(int idx, double normalizedValue);
   // If a parameter change comes from the GUI, midi, or external input,
   // the host needs to be informed in case the changes are being automated.
   virtual void BeginInformHostOfParamChange(int idx) = 0;
   virtual void InformHostOfParamChange(int idx, double normalizedValue) = 0;
   virtual void EndInformHostOfParamChange(int idx) = 0;
 
-	virtual void InformHostOfProgramChange() = 0;
+  virtual void InformHostOfProgramChange() = 0;
   // ----------------------------------------
   // Useful stuff for your plugin class or an outsider to call, 
   // most of which is implemented by the API class.
 
   double GetSampleRate() { return mSampleRate; }
-	int GetBlockSize() { return mBlockSize; }
+  int GetBlockSize() { return mBlockSize; }
   int GetLatency() { return mLatency; }
   
   bool GetIsBypassed() { return mIsBypassed; }
@@ -132,14 +134,14 @@ public:
   bool IsOutChannelConnected(int chIdx);
   
   virtual bool IsRenderingOffline() { return false; };
-	virtual int GetSamplePos() = 0;   // Samples since start of project.
-	virtual double GetTempo() = 0;
-	double GetSamplesPerBeat();
-	virtual void GetTimeSig(int* pNum, int* pDenom) = 0;
-	virtual void GetTime(ITimeInfo* pTimeInfo) = 0;
+  virtual int GetSamplePos() = 0;   // Samples since start of project.
+  virtual double GetTempo() = 0;
+  double GetSamplesPerBeat();
+  virtual void GetTimeSig(int* pNum, int* pDenom) = 0;
+  virtual void GetTime(ITimeInfo* pTimeInfo) = 0;
   virtual EHost GetHost() { return mHost; }
   virtual EAPI GetAPI() { return mAPI; }
-	int GetHostVersion(bool decimal); // Decimal = VVVVRRMM, otherwise 0xVVVVRRMM.
+  int GetHostVersion(bool decimal); // Decimal = VVVVRRMM, otherwise 0xVVVVRRMM.
   void GetHostVersionStr(char* str);
   
   // Tell the host that the graphics resized.
@@ -153,59 +155,78 @@ protected:
   // ----------------------------------------
   // Useful stuff for your plugin class to call, implemented here or in the API class, or partly in both.
 
+  // for labelling individual inputs/outputs (VST2)
   void SetInputLabel(int idx, const char* pLabel);
   void SetOutputLabel(int idx, const char* pLabel);
+  
+  const WDL_String* GetInputLabel(int idx) { return &(mInChannels.Get(idx)->mLabel); }
+  const WDL_String* GetOutputLabel(int idx) { return &(mOutChannels.Get(idx)->mLabel); }
+  
+  // for labelling bus inputs/outputs (AU/VST3)
+  void SetInputBusLabel(int idx, const char* pLabel);
+  void SetOutputBusLabel(int idx, const char* pLabel);
+  
+  const WDL_String* GetInputBusLabel(int idx) { return mInputBusLabels.Get(idx); }
+  const WDL_String* GetOutputBusLabel(int idx) { return mOutputBusLabels.Get(idx); }
 
   struct ChannelIO 
   { 
     int mIn, mOut; 
     ChannelIO(int nIn, int nOut) : mIn(nIn), mOut(nOut) {}
   };
+  
   WDL_PtrList<ChannelIO> mChannelIO;
   bool LegalIO(int nIn, int nOut);    // -1 for either means check the other value only.
   void LimitToStereoIO();
   
+  void InitializeVSTChunk(ByteChunk* pChunk);
+  int GetIPlugVerFromChunk(ByteChunk* pChunk, int* pPos);
+  
   void SetHost(const char* host, int version);   // Version = 0xVVVVRRMM.
   virtual void HostSpecificInit() { return; };
 #ifndef OS_IOS
-	virtual void AttachGraphics(IGraphics* pGraphics);
+  virtual void AttachGraphics(IGraphics* pGraphics);
 #endif
   void SetSampleRate(double sampleRate);
   virtual void SetBlockSize(int blockSize); 
   // If latency changes after initialization (often not supported by the host).
   virtual void SetLatency(int samples);
-	virtual bool SendMidiMsg(IMidiMsg* pMsg) = 0;
+  virtual bool SendMidiMsg(IMidiMsg* pMsg) = 0;
   virtual bool SendMidiMsgs(WDL_TypedBuf<IMidiMsg>* pMsgs) = 0;
   bool IsInst() { return mIsInst; }
-    
+  
+  // You can't use these three methods with chunks-based plugins, because there is no way to set the custom data
   void MakeDefaultPreset(char* name = 0, int nPresets = 1);
   // MakePreset(name, param1, param2, ..., paramN)
   void MakePreset(char* name, ...);
   // MakePresetFromNamedParams(name, nParamsNamed, paramEnum1, paramVal1, paramEnum2, paramVal2, ..., paramEnumN, paramVal2)
   // nParamsNamed may be less than the total number of params.
   void MakePresetFromNamedParams(char* name, int nParamsNamed, ...);
+  
+  // Use these methods with chunks-based plugins
   void MakePresetFromChunk(char* name, ByteChunk* pChunk);
   void MakePresetFromBlob(char* name, const char* blob, int sizeOfChunk);
 
   bool DoesStateChunks() { return mStateChunks; }
-  // Will append if the chunk is already started.
-  virtual bool SerializeParams(ByteChunk* pChunk);
-  // Returns the new chunk position (endPos).
-  virtual int UnserializeParams(ByteChunk* pChunk, int startPos);
+  
+  // Will append if the chunk is already started
+  bool SerializeParams(ByteChunk* pChunk);
+  int UnserializeParams(ByteChunk* pChunk, int startPos); // Returns the new chunk position (endPos)
+  
 #ifndef OS_IOS
   virtual void RedrawParamControls();  // Called after restoring state.
 #endif
+  
   // ----------------------------------------
   // Internal IPlug stuff (but API classes need to get at it).
   
-  void OnParamReset();	// Calls OnParamChange(each param) + Reset().
+  void OnParamReset();  // Calls OnParamChange(each param) + Reset().
 
   void PruneUninitializedPresets();
 
-  virtual bool SerializePresets(ByteChunk* pChunk);
-  // Returns the new chunk position (endPos).
-  virtual int UnserializePresets(ByteChunk* pChunk, int startPos);
-
+  // Unserialize / SerializePresets - Only used by VST2
+  bool SerializePresets(ByteChunk* pChunk);
+  int UnserializePresets(ByteChunk* pChunk, int startPos); // Returns the new chunk position (endPos).
 
   // Set connection state for n channels.
   // If a channel is connected, we expect a call to attach the buffers before each process call.
@@ -226,18 +247,18 @@ protected:
   void ZeroScratchBuffers();
 public:
   
-	void ModifyCurrentPreset(const char* name = 0);     // Sets the currently active preset to whatever current params are.
-	int NPresets() { return mPresets.GetSize(); }
-	int GetCurrentPresetIdx() { return mCurrentPresetIdx; }
-	bool RestorePreset(int idx);
-	bool RestorePreset(const char* name);
-	const char* GetPresetName(int idx);
+  void ModifyCurrentPreset(const char* name = 0);     // Sets the currently active preset to whatever current params are.
+  int NPresets() { return mPresets.GetSize(); }
+  int GetCurrentPresetIdx() { return mCurrentPresetIdx; }
+  bool RestorePreset(int idx);
+  bool RestorePreset(const char* name);
+  const char* GetPresetName(int idx);
   
-	// Dump the current state as source code for a call to MakePresetFromNamedParams.
-	void DumpPresetSrcCode(const char* filename, const char* paramEnumNames[]);
+  // Dump the current state as source code for a call to MakePresetFromNamedParams.
+  void DumpPresetSrcCode(const char* filename, const char* paramEnumNames[]);
   void DumpPresetBlob(const char* filename); 
   
-	virtual void PresetsChangedByHost() {} // does nothing by default
+  virtual void PresetsChangedByHost() {} // does nothing by default
   void DirtyParameters(); // hack to tell the host to dirty file state, when a preset is recalled
 #ifndef OS_IOS  
   bool SaveProgramAsFXP(const char* defaultFileName = "");
@@ -282,21 +303,22 @@ private:
   };
   
 protected:
+  // TODO: probably this stuff should be private, not protected
   bool mStateChunks, mIsInst, mIsBypassed;
   double mSampleRate;
   int mBlockSize, mLatency;
   WDL_String mPreviousPath; // for saving/loading fxps
-  WDL_PtrList<IParam> mParams;
-  WDL_PtrList<InChannel> mInChannels;
-  WDL_PtrList<OutChannel> mOutChannels;
   
 private:
-	IGraphics* mGraphics;
-
-  WDL_PtrList<IPreset> mPresets;
   int mCurrentPresetIdx;
-
+  IGraphics* mGraphics;
+  WDL_PtrList<IParam> mParams;
+  WDL_PtrList<IPreset> mPresets;
   WDL_TypedBuf<double*> mInData, mOutData;
+  WDL_PtrList<InChannel> mInChannels;
+  WDL_PtrList<OutChannel> mOutChannels;
+  WDL_PtrList<WDL_String> mInputBusLabels;
+  WDL_PtrList<WDL_String> mOutputBusLabels;
 };
 
 #endif

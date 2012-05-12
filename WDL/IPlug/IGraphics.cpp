@@ -324,18 +324,18 @@ void IGraphics::SetAllControlsDirty()
   }
 }
 
-void IGraphics::SetParameterFromGUI(int paramIdx, double normalizedValue)
-{
-  int i, n = mControls.GetSize();
-  IControl** ppControl = mControls.GetList();
-	for (i = 0; i < n; ++i, ++ppControl) {
-    IControl* pControl = *ppControl;
-    if (pControl->ParamIdx() == paramIdx) {
-      pControl->SetValueFromUserInput(normalizedValue);
-      // Could be more than one, don't break until we check them all.
-    }
-	}
-}
+//void IGraphics::SetParameterFromGUI(int paramIdx, double normalizedValue)
+//{
+//  int i, n = mControls.GetSize();
+//  IControl** ppControl = mControls.GetList();
+//	for (i = 0; i < n; ++i, ++ppControl) {
+//    IControl* pControl = *ppControl;
+//    if (pControl->ParamIdx() == paramIdx) {
+//      pControl->SetValueFromUserInput(normalizedValue);
+//      // Could be more than one, don't break until we check them all.
+//    }
+//	}
+//}
 
 void IGraphics::PromptUserInput(IControl* pControl, IParam* pParam, IRECT* pTextRect)
 {
@@ -745,8 +745,15 @@ bool IGraphics::Draw(IRECT* pR)
     }
   }
 
+#ifdef SHOW_CONTROL_BOUNDARIES
+  for (int j = 1; j < mControls.GetSize(); j++) 
+  {
+    IControl* pControl = mControls.Get(j);
+    DrawRect(&COLOR_RED, pControl->GetRECT());
+  }
+#endif
+  
   return DrawScreen(pR);
-
 }
 
 void IGraphics::SetStrictDrawing(bool strict)
@@ -759,16 +766,34 @@ void IGraphics::OnMouseDown(int x, int y, IMouseMod* pMod)
 {
 	ReleaseMouseCapture();
   int c = GetMouseControlIdx(x, y);
-	if (c >= 0) {
+	if (c >= 0) 
+  {
 		mMouseCapture = c;
 		mMouseX = x;
 		mMouseY = y;
         
     IControl* pControl = mControls.Get(c);
-		pControl->OnMouseDown(x, y, pMod);
-    pControl = mControls.Get(c); // needed if the mouse message caused a resize/rebuild
     int paramIdx = pControl->ParamIdx();
-    if (paramIdx >= 0) {
+    
+#if defined OS_WIN || defined VST3_API  // on Mac, IGraphics.cpp is not compiled in a static library, so this can be #ifdef'd
+    if (mPlug->GetAPI() == kAPIVST3) 
+    {
+      if (pMod->R && paramIdx >= 0) 
+      {
+        ReleaseMouseCapture();
+        mPlug->PopupHostContextMenuForParam(paramIdx, x, y);
+        return;
+      }
+    }
+#endif
+		pControl->OnMouseDown(x, y, pMod);
+    
+    // need to do these things again in case the mouse message caused a resize/rebuild
+    pControl = mControls.Get(c);
+    paramIdx = pControl->ParamIdx();
+
+    if (paramIdx >= 0)
+    {
       mPlug->BeginInformHostOfParamChange(paramIdx);
     }    
   }

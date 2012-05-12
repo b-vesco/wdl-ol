@@ -6,6 +6,7 @@
 #include "public.sdk/source/vst/vstsinglecomponenteffect.h"
 #include "pluginterfaces/vst/ivstprocesscontext.h"
 #include "pluginterfaces/vst/vsttypes.h"
+#include "pluginterfaces/vst/ivstcontextmenu.h"
 //#include "IMidiQueue.h"
 
 //#include "public.sdk/source/vst/vstpresetfile.h"
@@ -54,8 +55,7 @@ public:
   tresult PLUGIN_API process(ProcessData& data);
 //  tresult PLUGIN_API setState(IBStream* state);
 //  tresult PLUGIN_API getState(IBStream* state);
-  virtual tresult PLUGIN_API setState(IBStream* state)  {return kNotImplemented;}
-  virtual tresult PLUGIN_API getState(IBStream* state)  {return kNotImplemented;}
+//  tresult PLUGIN_API setComponentState(IBStream *state);
   tresult PLUGIN_API canProcessSampleSize(int32 symbolicSampleSize);
 
   // IEditController
@@ -87,7 +87,7 @@ public:
   virtual tresult PLUGIN_API getUnitByBus (MediaType type, BusDirection dir, int32 busIndex,
                                            int32 channel, UnitID& unitId /*out*/) {return kNotImplemented;}
   virtual tresult PLUGIN_API setUnitProgramData (int32 listOrUnitId, int32 programIndex, IBStream* data) {return kNotImplemented;}
-  
+    
   //IPlugBase
   virtual void BeginInformHostOfParamChange(int idx);
   virtual void InformHostOfParamChange(int idx, double normalizedValue);
@@ -102,6 +102,8 @@ public:
   virtual void GetTime(ITimeInfo* pTimeInfo);
 
   virtual void ResizeGraphics(int w, int h);
+  
+  void PopupHostContextMenuForParam(int param, int x, int y);
 
   // call it like DumpFactoryPresets("/Users/oli/Desktop/",  GUID_DATA1, GUID_DATA2, GUID_DATA3, GUID_DATA4);
 //  void DumpFactoryPresets(const char* path, int a, int b, int c, int d);  // TODO

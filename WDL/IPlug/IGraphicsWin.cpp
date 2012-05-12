@@ -142,7 +142,7 @@ LRESULT CALLBACK IGraphicsWin::WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARA
             pGraphics->mParamEditMsg = kUpdate;
           }
           else 
-                  UpdateWindow(hWnd);
+            UpdateWindow(hWnd);
         }
       }
       return 0;
@@ -843,7 +843,6 @@ void IGraphicsWin::CreateTextEntry(IControl* pControl, IText* pText, IRECT* pTex
   if (!pControl || mParamEditWnd) return;
   
   DWORD editStyle;
-
   
   switch ( pText->mAlign ) 
   {
@@ -856,7 +855,7 @@ void IGraphicsWin::CreateTextEntry(IControl* pControl, IText* pText, IRECT* pTex
   editStyle |= ES_MULTILINE;
   
   mParamEditWnd = CreateWindow("EDIT", pString, WS_CHILD | WS_VISIBLE | editStyle , 
-                               pTextRect->L, pTextRect->T, pTextRect->W()+1, pTextRect->H() + 2, 
+                               pTextRect->L, pTextRect->T, pTextRect->W()+1, pTextRect->H()+1, 
                                mPlugWnd, (HMENU) PARAM_EDIT_ID, mHInstance, 0);
   
   HFONT font = CreateFont(pText->mSize, 0, 0, 0, pText->mStyle == IText::kStyleBold ? FW_BOLD : 0, pText->mStyle == IText::kStyleItalic ? TRUE : 0, 0, 0, 0, 0, 0, 0, 0, pText->mFont);
@@ -907,16 +906,12 @@ void IGraphicsWin::PluginPath(WDL_String* pPath)
 
 void IGraphicsWin::DesktopPath(WDL_String* pPath)
 {
+#ifndef __MINGW_H // TODO: alternative for gcc?
   TCHAR strPath[MAX_PATH_LEN];
-#ifndef __MINGW_H
-  // Get the special folder path.
-  SHGetSpecialFolderPath( 0,       // Hwnd
-                         strPath, // String buffer.
-                         CSIDL_DESKTOP, // CSLID of folder
-                         FALSE );
-#endif
+  SHGetSpecialFolderPath( 0, strPath, CSIDL_DESKTOP, FALSE );
   
   pPath->Set(strPath, MAX_PATH_LEN);
+#endif
 }
 
 void IGraphicsWin::PromptForFile(WDL_String* pFilename, EFileAction action, WDL_String* pDir, char* extensions)

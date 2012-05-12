@@ -12,18 +12,18 @@ IRECT GetRegionRect(EventRef pEvent, int gfxW, int gfxH)
   return IRECT(0, 0, gfxW, gfxH);
 }
 
-IRECT GetControlRect(EventRef pEvent, int gfxW, int gfxH)
-{
-  Rect rct;
-  if (GetEventParameter(pEvent, kEventParamCurrentBounds, typeQDRectangle, 0, sizeof(Rect), 0, &rct) == noErr) {
-    int w = rct.right - rct.left;
-    int h = rct.bottom - rct.top;
-    if (w > 0 && h > 0) {
-      return IRECT(0, 0, w, h);
-    }
-  }  
-  return IRECT(0, 0, gfxW, gfxH);
-}
+//IRECT GetControlRect(EventRef pEvent, int gfxW, int gfxH)
+//{
+//  Rect rct;
+//  if (GetEventParameter(pEvent, kEventParamCurrentBounds, typeQDRectangle, 0, sizeof(Rect), 0, &rct) == noErr) {
+//    int w = rct.right - rct.left;
+//    int h = rct.bottom - rct.top;
+//    if (w > 0 && h > 0) {
+//      return IRECT(0, 0, w, h);
+//    }
+//  }  
+//  return IRECT(0, 0, gfxW, gfxH);
+//}
 
 void ResizeWindow(WindowRef pWindow, int w, int h)
 {
@@ -56,7 +56,7 @@ IGraphicsCarbon::IGraphicsCarbon(IGraphicsMac* pGraphicsMac,
 , mEdParam(0)
 , mPrevX(0)
 , mPrevY(0)
-, mRgn(NewRgn())
+//, mRgn(NewRgn())
 , mLeftOffset(leftOffset)
 , mTopOffset(topOffset)
 { 
@@ -159,7 +159,7 @@ IGraphicsCarbon::~IGraphicsCarbon()
   RemoveEventHandler(mWindowHandler);
   mTimer = 0;
   mView = 0;
-  DisposeRgn(mRgn);
+//  DisposeRgn(mRgn);
 }
 
 bool IGraphicsCarbon::Resize(int w, int h)
@@ -410,11 +410,11 @@ pascal OSStatus IGraphicsCarbon::MainEventHandler(EventHandlerCallRef pHandlerCa
             
             CGContextTranslateCTM(_this->mCGC, portBounds.left + offsetW, -portBounds.top);
             
-            r.L = r.T = r.R = r.B = 0;
-            pGraphicsMac->IsDirty(&r);
-            pGraphicsMac->Draw(&r);
+            pGraphicsMac->Draw(&r); // Carbon non-composited will redraw everything, the IRECT passed here is the entire plugin-gui 
             
-            QDEndCGContext(port, &(_this->mCGC));           
+            QDEndCGContext(port, &(_this->mCGC));
+            
+            DisposeRgn(clipRegion);
           }      
           return noErr;
         }
@@ -427,19 +427,30 @@ pascal OSStatus IGraphicsCarbon::MainEventHandler(EventHandlerCallRef pHandlerCa
       GetEventParameter(pEvent, kEventParamWindowMouseLocation, typeHIPoint, 0, sizeof(HIPoint), 0, &hp);
       
       #ifdef RTAS_API
-      // Header offset
-      hp.x -= _this->GetLeftOffset();
-      hp.y -= _this->GetTopOffset();
-      // Title bar offset
-      Rect bounds;
-      GetWindowBounds(_this->mWindow, kWindowTitleBarRgn, &bounds);   
-      hp.y -= bounds.bottom - bounds.top;
-      int x = (int) hp.x;
-      int y = (int) hp.y;
-      #else
-      HIPointConvert(&hp, kHICoordSpaceWindow, _this->mWindow, kHICoordSpaceView, _this->mView);
-      int x = (int) hp.x - 2;
-      int y = (int) hp.y - 3;
+        // Header offset
+        hp.x -= _this->GetLeftOffset();
+        hp.y -= _this->GetTopOffset();
+        
+        Rect bounds;
+        GetWindowBounds(_this->mWindow, kWindowTitleBarRgn, &bounds);   
+        
+        // adjust x mouse coord if the gui is less wide than the window
+        int windowWidth = (bounds.right - bounds.left);
+        
+        if (windowWidth > pGraphicsMac->Width()) {
+          hp.x -= (int) floor((windowWidth - pGraphicsMac->Width()) / 2.);
+        }
+        
+        // Title bar Y offset
+        hp.y -= bounds.bottom - bounds.top;
+        
+        int x = (int) hp.x;
+        int y = (int) hp.y;
+      
+      #else // NOT RTAS
+        HIPointConvert(&hp, kHICoordSpaceWindow, _this->mWindow, kHICoordSpaceView, _this->mView);
+        int x = (int) hp.x - 2;
+        int y = (int) hp.y - 3;
       #endif
       
       UInt32 mods;
@@ -579,6 +590,9 @@ pascal void IGraphicsCarbon::TimerHandler(EventLoopTimerRef pTimer, void* pGraph
     }
     else 
     { 
+//      int h = _this->mGraphicsMac->Height();
+//      SetRectRgn(_this->mRgn, r.L, h - r.B, r.R, h - r.T);
+//      UpdateControls(_this->mWindow, _this->mRgn);
       UpdateControls(_this->mWindow, 0);
     }
   } 

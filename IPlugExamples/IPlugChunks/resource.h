@@ -32,51 +32,6 @@
 
 #define PLUG_CHANNEL_IO "1-1 2-2"
 
-// if you want to do anything unusual re i/o you need to #ifdef PLUG_CHANNEL_IO and PLUG_SC_CHANS depending on the api because they all do it differently...
-
-// PLUGINS WITH SIDE CHAIN INPUTS
-// ***************************
-//#ifdef RTAS_API
-// PLUG_SC_CHANS defines the number of inputs in the PLUG_CHANNEL_IO that should be considered sidechain inputs.
-// RTAS can only have one mono sidechain input, so for instance to make a mono/stereo plugin with a side chain input you could do this.
-//#define PLUG_CHANNEL_IO "2-1 3-2"
-//#define PLUG_SC_CHANS 1
-//#else // AU & VST2
-// AU sidechains work with audiounit effects or midi controlled effects only... not instruments
-// this works for a mono plug with optional mono sidechain...
-//#define PLUG_CHANNEL_IO "1-1 2-1"
-//#define PLUG_SC_CHANS 1
-// this DOESN'T work (in aulab) for a stereo plug with optional mono sidechain...
-//#define PLUG_CHANNEL_IO "2-2 3-2"
-//#define PLUG_SC_CHANS 1
-// this works for a stereo plug with optional stereo sidechain...
-//#define PLUG_CHANNEL_IO "2-2 4-2"
-//#define PLUG_SC_CHANS 2
-// but a combination DOESN'T work right now (in aulab)
-//#define PLUG_CHANNEL_IO "1-1 2-1 2-2 4-2"
-//#define PLUG_SC_CHANS 1
-//#endif
-
-// PLUGIN INSTRUMENTS (WITH MULTIPLE OUTPUTS)
-// ***************************
-//#ifdef RTAS_API
-// rtas instruments have to say they have inputs
-// rtas multiple outputs will result in a multichannel bus
-//#define PLUG_CHANNEL_IO "1-1 2-2"
-//#else // AU & VST2
-// in AU these will be grouped as stereo pairs... that is fixed right now
-//#define PLUG_CHANNEL_IO "0-2 0-4 0-6 0-8"
-//#endif
-//#define PLUG_SC_CHANS 0
-
-// MULTI-CHANNEL EFFECT PLUGINS (I.E MONO->QUAD, QUAD->QUAD etc)
-// ***************************
-// seems to be ok for au and rtas
-//#define PLUG_CHANNEL_IO "1-4 4-4"
-//#define PLUG_SC_CHANS 0
-
-//
-
 #define PLUG_LATENCY 0
 #define PLUG_IS_INST 0
 
@@ -105,13 +60,13 @@
 // vst3 stuff
 #define MFR_URL "www.olilarkin.co.uk"
 #define MFR_EMAIL "spam@me.com"
-#define EFFECT_TYPE_VST3 kFx
+#define EFFECT_TYPE_VST3 "Fx"
 
-/* kFxAnalyzer, kFxDelay, kFxDistortion, kFxDynamics, kFxEQ, kFxFilter,
-kFx, kFxInstrument, kFxInstrumentExternal, kFxSpatial, kFxGenerator,
-kFxMastering, kFxModulation, kFxPitchShift, kFxRestoration, kFxReverb,
-kFxSurround, kFxTools, kInstrument, kInstrumentDrum, kInstrumentSampler,
-kInstrumentSynth, kInstrumentSynthSample, kInstrumentExternal, kSpatial,
-kSpatialFx, kOnlyRealTime, kOnlyOfflineProcess, kMono, kStereo,
-kSurround
+/* "Fx|Analyzer"", "Fx|Delay", "Fx|Distortion", "Fx|Dynamics", "Fx|EQ", "Fx|Filter",
+"Fx", "Fx|Instrument", "Fx|InstrumentExternal", "Fx|Spatial", "Fx|Generator",
+"Fx|Mastering", "Fx|Modulation", "Fx|PitchShift", "Fx|Restoration", "Fx|Reverb",
+"Fx|Surround", "Fx|Tools", "Instrument", "Instrument|Drum", "Instrument|Sampler",
+"Instrument|Synth", "Instrument|Synth|Sampler", "Instrument|External", "Spatial",
+"Spatial|Fx", "OnlyRT", "OnlyOfflineProcess", "Mono", "Stereo",
+"Surround"
 */
